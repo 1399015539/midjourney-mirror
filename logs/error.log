@@ -1,0 +1,12 @@
+2025-07-22 12:26:26 [[31merror[39m]: [31mError creating mirror session: Protocol error (Network.setCookies): Invalid cookie fields[39m
+ProtocolError: Protocol error (Network.setCookies): Invalid cookie fields
+    at <instance_members_initializer> (/Users/zhaoshiyu/Documents/code/midjourney-mirror/node_modules/puppeteer-core/lib/cjs/puppeteer/common/CallbackRegistry.js:96:14)
+    at new Callback (/Users/zhaoshiyu/Documents/code/midjourney-mirror/node_modules/puppeteer-core/lib/cjs/puppeteer/common/CallbackRegistry.js:100:16)
+    at CallbackRegistry.create (/Users/zhaoshiyu/Documents/code/midjourney-mirror/node_modules/puppeteer-core/lib/cjs/puppeteer/common/CallbackRegistry.js:22:26)
+    at Connection._rawSend (/Users/zhaoshiyu/Documents/code/midjourney-mirror/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/Connection.js:80:26)
+    at CdpCDPSession.send (/Users/zhaoshiyu/Documents/code/midjourney-mirror/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/CDPSession.js:66:33)
+    at next (/Users/zhaoshiyu/Documents/code/midjourney-mirror/node_modules/puppeteer-extra-plugin-stealth/evasions/sourceurl/index.js:34:41)
+    at CdpCDPSession.send (/Users/zhaoshiyu/Documents/code/midjourney-mirror/node_modules/puppeteer-extra-plugin-stealth/evasions/sourceurl/index.js:67:18)
+    at CdpPage.setCookie (/Users/zhaoshiyu/Documents/code/midjourney-mirror/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/Page.js:502:45)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async ResourceFetcher.createAccountPage (/Users/zhaoshiyu/Documents/code/midjourney-mirror/src/services/resourceFetcher.js:120:17)

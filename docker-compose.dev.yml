@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # FlareSolverr服务 - CF绕过
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: midjourney-flaresolverr-dev
+    environment:
+      - LOG_LEVEL=debug
+      - LOG_HTML=true
+      - CAPTCHA_SOLVER=none
+      - TZ=Asia/Shanghai
+    ports:
+      - "8191:8191"
+    restart: unless-stopped
+    networks:
+      - midjourney-network
+
+  # Midjourney Mirror主应用 (开发模式)
+  midjourney-mirror:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: midjourney-mirror-dev
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - FLARESOLVERR_URL=http://flaresolverr:8191
+      - FLARESOLVERR_ENABLED=true
+      - TEST_MODE=true
+      - JWT_SECRET=dev-secret-key
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - LOG_LEVEL=debug
+      - MIDJOURNEY_BASE_URL=https://www.midjourney.com
+      - MIDJOURNEY_API_URL=https://api.midjourney.com
+    ports:
+      - "3000:3000"
+    depends_on:
+      - flaresolverr
+    restart: unless-stopped
+    networks:
+      - midjourney-network
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./logs:/app/logs
+    command: npm run dev
+
+networks:
+  midjourney-network:
+    driver: bridge

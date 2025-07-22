@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Midjourney Mirror - Select Account</title>
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/account-select.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Select Midjourney Account</h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+        
+        <div class="accounts-container">
+            <div class="accounts-grid" id="accountsGrid">
+                <!-- Account cards will be loaded here -->
+            </div>
+        </div>
+        
+        <div class="add-account-section">
+            <button class="add-account-btn" onclick="showAddAccountModal()">
+                + Add New Account
+            </button>
+        </div>
+    </div>
+
+    <!-- Add Account Modal -->
+    <div class="modal" id="addAccountModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Midjourney Account</h3>
+                <button class="modal-close" onclick="hideAddAccountModal()">&times;</button>
+            </div>
+            
+            <form class="add-account-form" id="addAccountForm">
+                <div class="form-group">
+                    <label for="accountName">Account Name</label>
+                    <input type="text" id="accountName" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="accountEmail">Email</label>
+                    <input type="email" id="accountEmail" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="accountCookies">Cookies</label>
+                    <textarea id="accountCookies" name="cookies" rows="4" 
+                              placeholder="Paste your Midjourney cookies here..." required></textarea>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" onclick="hideAddAccountModal()">Cancel</button>
+                    <button type="submit">Add Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="notification" id="notification" style="display: none;">
+        <div class="notification-content">
+            <span class="notification-message"></span>
+            <button class="notification-close">&times;</button>
+        </div>
+    </div>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/account-manager.js"></script>
+</body>
+</html>

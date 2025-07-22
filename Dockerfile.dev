@@ -1,0 +1,30 @@
+# Midjourney Mirror Development Dockerfile
+FROM node:18-alpine
+
+# Install basic dependencies
+RUN apk add --no-cache \
+    curl \
+    wget \
+    ca-certificates
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev dependencies)
+RUN npm install
+
+# Create necessary directories
+RUN mkdir -p logs
+
+# Set environment variables
+ENV NODE_ENV=development
+ENV PORT=3000
+
+# Expose port
+EXPOSE 3000
+
+# Start the application in development mode
+CMD ["npm", "run", "dev"]
