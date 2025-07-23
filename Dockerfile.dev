@@ -7,14 +7,19 @@ RUN apk add --no-cache \
     wget \
     ca-certificates
 
-# Create app directory
+# Create app directory and set permissions
 WORKDIR /app
+RUN chown -R node:node /app
 
-# Copy package files
-COPY package*.json ./
+# Switch to non-root user
+USER node
+
+# Copy package files with correct ownership
+COPY --chown=node:node package*.json ./
 
 # Install all dependencies (including dev dependencies)
-RUN npm install
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm install
 
 # Create necessary directories
 RUN mkdir -p logs

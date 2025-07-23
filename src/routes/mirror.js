@@ -10,26 +10,120 @@ const flareMirrorService = new FlareMirrorService();
 const sessionManager = new SessionManager();
 const accountManager = new AccountManager();
 
-// Apply authentication middleware to most routes, but not static resources
-const conditionalAuth = (req, res, next) => {
-    // Skip auth for static resources if they have a valid accountId parameter
-    if (req.path.startsWith('/static/')) {
+// 静态资源路由处理
+router.get('/static/*', async (req, res) => {
+    try {
         const accountId = req.query.accountId || req.headers['x-mirror-account-id'];
-        if (accountId) {
-            console.log(`Skipping auth for static resource: ${req.path} with accountId: ${accountId}`);
-            return next();
+        if (!accountId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Account ID is required'
+            });
         }
+
+        let resourcePath = req.path.replace('/static/', '');
+        resourcePath = decodeURIComponent(resourcePath);
+
+        logger.info(`Static resource request: ${resourcePath} for account: ${accountId}`);
+
+        const result = await flareMirrorService.proxyStaticResource(accountId, resourcePath);
+
+        // 设置响应头
+        if (result.headers) {
+            Object.entries(result.headers).forEach(([key, value]) => {
+                try {
+                    res.set(key, value);
+                } catch (error) {
+                    logger.warn(`Failed to set header ${key}:`, error.message);
+                }
+            });
+        }
+
+        // 确保正确的内容类型
+        const contentType = result.headers['content-type'];
+        if (contentType) {
+            res.type(contentType);
+        }
+
+        // 设置缓存控制
+        res.set({
+            'Cache-Control': 'public, max-age=3600',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Mirror-Account-ID, X-Mirror-Session-ID'
+        });
+
+        // 发送响应
+        res.status(result.status).send(result.data);
+
+    } catch (error) {
+        logger.error('Error proxying static resource:', error);
+        
+        // 返回更详细的错误信息
+        res.status(error.status || 500).json({
+            success: false,
+            message: error.message || 'Failed to proxy static resource',
+            path: req.path,
+            error: error.toString()
+        });
     }
-    
-    // Apply normal auth for all other routes
-    console.log(`Applying auth for: ${req.path}`);
-    return authMiddleware(req, res, next);
-};
+});
 
-router.use(conditionalAuth);
+// API路由处理
+router.all('/api/*', authMiddleware, async (req, res) => {
+    try {
+        const accountId = req.headers['x-mirror-account-id'];
+        const sessionId = req.headers['x-mirror-session-id'];
 
-// Create mirror session
-router.post('/session', async (req, res) => {
+        if (!accountId || !sessionId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Account ID and Session ID are required'
+            });
+        }
+
+        // 验证会话
+        const sessionValidation = sessionManager.validateSession(sessionId, req.user.userId);
+        if (!sessionValidation.valid) {
+            return res.status(401).json({
+                success: false,
+                message: sessionValidation.message
+            });
+        }
+
+        // 更新会话活动
+        sessionManager.updateActivity(sessionId);
+
+        // 代理API请求
+        const apiPath = req.path.replace('/api', '');
+        const result = await flareMirrorService.proxyApiRequest(
+            accountId,
+            apiPath,
+            req.method,
+            req.body,
+            req.headers
+        );
+
+        // 设置响应头
+        Object.entries(result.headers || {}).forEach(([key, value]) => {
+            if (!key.toLowerCase().startsWith('transfer-encoding')) {
+                res.set(key, value);
+            }
+        });
+
+        res.status(result.status).send(result.data);
+
+    } catch (error) {
+        logger.error('Error proxying API request:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to proxy API request'
+        });
+    }
+});
+
+// 创建镜像会话
+router.post('/session', authMiddleware, async (req, res) => {
     try {
         const { accountId } = req.body;
 
@@ -40,7 +134,7 @@ router.post('/session', async (req, res) => {
             });
         }
 
-        // Validate account
+        // 验证账号
         const validation = accountManager.validateAccount(accountId);
         if (!validation.valid) {
             return res.status(400).json({
@@ -51,7 +145,7 @@ router.post('/session', async (req, res) => {
 
         const account = validation.account;
         
-        // Create session manager session
+        // 创建会话
         const session = sessionManager.createSession(
             req.user.userId,
             accountId,
@@ -59,29 +153,28 @@ router.post('/session', async (req, res) => {
             req.headers['user-agent']
         );
 
-        // Create FlareSolverr mirror session
+        // 创建FlareSolverr会话
         await flareMirrorService.createSession(accountId, account.cookies);
 
-        logger.info(`FlareSolverr Mirror session created: ${session.id} for account: ${accountId}`);
+        logger.info(`Mirror session created: ${session.id} for account: ${accountId}`);
 
         res.json({
             success: true,
             sessionId: session.id,
-            method: 'flaresolverr',
-            message: 'FlareSolverr Mirror session created successfully'
+            message: 'Mirror session created successfully'
         });
 
     } catch (error) {
-        logger.error('Error creating HTTP mirror session:', error);
+        logger.error('Error creating mirror session:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to create mirror session: ' + error.message
+            message: 'Failed to create mirror session'
         });
     }
 });
 
-// Get mirror content (initial page)
-router.get('/content', async (req, res) => {
+// 获取镜像内容
+router.get('/content', authMiddleware, async (req, res) => {
     try {
         const { accountId, sessionId } = req.query;
 
@@ -92,7 +185,7 @@ router.get('/content', async (req, res) => {
             });
         }
 
-        // Validate session
+        // 验证会话
         const sessionValidation = sessionManager.validateSession(sessionId, req.user.userId);
         if (!sessionValidation.valid) {
             return res.status(401).json({
@@ -101,155 +194,34 @@ router.get('/content', async (req, res) => {
             });
         }
 
-        // Update session activity
+        // 更新会话活动
         sessionManager.updateActivity(sessionId);
 
-        // Fetch content using FlareSolverr service
+        // 获取页面内容
         const result = await flareMirrorService.fetchPage(accountId);
 
         res.json({
             success: true,
             content: result.content,
             status: result.status,
-            url: result.url,
-            method: 'flaresolverr',
-            challenge: result.challenge || false
+            url: result.url
         });
 
     } catch (error) {
-        logger.error('Error fetching HTTP mirror content:', error);
+        logger.error('Error fetching mirror content:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to fetch mirror content: ' + error.message
+            message: 'Failed to fetch mirror content'
         });
     }
 });
 
-// Proxy static resources
-router.get('/static/*', async (req, res) => {
-    try {
-        const accountId = req.headers['x-mirror-account-id'] || req.query.accountId;
-        let resourcePath = req.path.replace('/static/', ''); // 移除/static/前缀
-
-        if (!accountId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Account ID is required'
-            });
-        }
-
-        // 解码URL，处理编码的URL
-        resourcePath = decodeURIComponent(resourcePath);
-        
-        logger.info(`Static resource request: ${resourcePath} for account: ${accountId}`);
-
-        const result = await flareMirrorService.proxyStaticResource(accountId, resourcePath);
-
-        // 设置正确的Content-Type
-        if (result.headers['content-type']) {
-            res.set('Content-Type', result.headers['content-type']);
-        }
-        
-        // 设置缓存头
-        res.set('Cache-Control', 'public, max-age=3600');
-        res.set('Access-Control-Allow-Origin', '*');
-        res.set('Access-Control-Allow-Headers', 'X-Mirror-Account-ID, X-Mirror-Method');
-
-        // 如果是二进制数据（如图片、字体），需要正确处理
-        if (Buffer.isBuffer(result.data)) {
-            res.status(result.status).send(result.data);
-        } else if (typeof result.data === 'string') {
-            // 对于文本资源（CSS、JS），可能需要进一步处理
-            let processedData = result.data;
-            
-            // 如果是CSS文件，重写其中的URL引用
-            if (result.headers['content-type'] && result.headers['content-type'].includes('text/css')) {
-                processedData = processedData.replace(
-                    /url\((['"]?)([^'")]+)\1\)/g,
-                    (match, quote, url) => {
-                        if (url.startsWith('http') || url.startsWith('//')) {
-                            return `url(${quote}/api/mirror/static/${url}?accountId=${accountId}${quote})`;
-                        } else if (url.startsWith('/')) {
-                            return `url(${quote}/api/mirror/static${url}?accountId=${accountId}${quote})`;
-                        }
-                        return match;
-                    }
-                );
-                logger.debug(`Processed CSS URLs for: ${resourcePath}`);
-            }
-            
-            res.status(result.status).send(processedData);
-        } else {
-            res.status(result.status).send(result.data);
-        }
-
-    } catch (error) {
-        logger.error('Error proxying static resource:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to proxy static resource: ' + error.message
-        });
-    }
-});
-
-// Proxy API requests
-router.all('/mj-api/*', async (req, res) => {
-    try {
-        const accountId = req.headers['x-mirror-account-id'];
-        const apiPath = req.path.replace('/mj-api', '');
-
-        if (!accountId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Account ID is required in headers'
-            });
-        }
-
-        const result = await flareMirrorService.proxyApiRequest(
-            accountId,
-            apiPath,
-            req.method,
-            req.body,
-            req.headers
-        );
-
-        // 复制响应头
-        Object.keys(result.headers).forEach(key => {
-            if (!key.toLowerCase().startsWith('transfer-encoding')) {
-                res.set(key, result.headers[key]);
-            }
-        });
-
-        // 设置CORS头
-        res.set('Access-Control-Allow-Origin', '*');
-        res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Mirror-Account-ID');
-
-        res.status(result.status).json(result.data);
-
-    } catch (error) {
-        logger.error('Error proxying API request:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to proxy API request: ' + error.message
-        });
-    }
-});
-
-// Handle OPTIONS requests for CORS
-router.options('/mj-api/*', (req, res) => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Mirror-Account-ID');
-    res.status(204).send();
-});
-
-// Destroy mirror session
-router.delete('/session/:sessionId', async (req, res) => {
+// 销毁会话
+router.delete('/session/:sessionId', authMiddleware, async (req, res) => {
     try {
         const { sessionId } = req.params;
 
-        // Validate session ownership
+        // 验证会话所有权
         const sessionValidation = sessionManager.validateSession(sessionId, req.user.userId);
         if (!sessionValidation.valid) {
             return res.status(401).json({
@@ -260,10 +232,8 @@ router.delete('/session/:sessionId', async (req, res) => {
 
         const session = sessionValidation.session;
 
-        // Clean up FlareSolverr mirror session
-        flareMirrorService.cleanup(session.accountId);
-        
-        // Clean up session manager session
+        // 清理资源
+        await flareMirrorService.destroySession(session.accountId);
         sessionManager.destroySession(sessionId);
 
         res.json({
@@ -276,30 +246,6 @@ router.delete('/session/:sessionId', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to destroy mirror session'
-        });
-    }
-});
-
-// Get session status
-router.get('/session/:sessionId/status', (req, res) => {
-    try {
-        const { sessionId } = req.params;
-
-        const sessionValidation = sessionManager.validateSession(sessionId, req.user.userId);
-        
-        res.json({
-            success: true,
-            valid: sessionValidation.valid,
-            session: sessionValidation.session || null,
-            method: 'flaresolverr',
-            message: sessionValidation.message || null
-        });
-
-    } catch (error) {
-        logger.error('Error checking session status:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to check session status'
         });
     }
 });

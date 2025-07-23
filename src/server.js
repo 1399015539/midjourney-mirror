@@ -1,5 +1,8 @@
 require('dotenv').config();
 const express = require('express');
+const https = require('https');
+const http = require('http');
+const fs = require('fs');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
@@ -31,28 +34,15 @@ const rateLimiter = new RateLimiterMemory({
 
 // Security middleware
 app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https:", "data:"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "data:"],
-            scriptSrcAttr: ["'unsafe-inline'"], // Allow inline event handlers
-            imgSrc: ["'self'", "data:", "https:", "blob:"],
-            connectSrc: ["'self'", "ws:", "wss:", "https:", "data:"],
-            fontSrc: ["'self'", "data:", "https:"],
-            objectSrc: ["'none'"],
-            mediaSrc: ["'self'", "https:", "data:"],
-            frameSrc: ["'self'", "blob:", "https:", "data:"]
-        },
-    },
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    crossOriginOpenerPolicy: false
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false
 }));
 
 app.use(compression());
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' ? false : true,
-    credentials: true
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Mirror-Account-ID', 'X-Mirror-Session-ID']
 }));
 
 // Body parsing middleware

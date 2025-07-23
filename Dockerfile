@@ -13,8 +13,13 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies with npm config optimizations
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm config set fetch-retries 3 && \
+    npm config set fetch-retry-mintimeout 5000 && \
+    npm config set fetch-retry-maxtimeout 60000 && \
+    npm config set legacy-peer-deps true && \
+    npm install --no-audit --no-fund --prefer-offline
 
 # Copy application source
 COPY . .
