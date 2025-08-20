@@ -52,7 +52,7 @@
 ## 📞 购买咨询
 
 ### 💬 联系方式
-
+<img width="800" height="800" alt="qrcode" src="https://github.com/user-attachments/assets/a3ecc816-7a7b-4420-9787-6b9a3bd539b2" />
 
 ### 🔥 客户案例
 已为以下类型客户提供服务：
