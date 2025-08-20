@@ -19,16 +19,13 @@
 ## 🖥️ 界面展示
 
 ### 主界面 - 完美还原官方体验
-![主界面截图](https://via.placeholder.com/800x400/f8f9fa/6c757d?text=Midjourney+Mirror+%E4%B8%BB%E7%95%8C%E9%9D%A2)
+<img width="1510" height="857" alt="image" src="https://github.com/user-attachments/assets/52da93ba-efc5-4e82-a83a-123293951f52" />
 
 ### 图片浏览 - 瀑布流展示
-![图片浏览](https://via.placeholder.com/800x400/e9ecef/495057?text=%E5%9B%BE%E7%89%87%E6%B5%8F%E8%A7%88%E7%95%8C%E9%9D%A2)
+<img width="1508" height="858" alt="image" src="https://github.com/user-attachments/assets/b2a44391-a1ec-4ee8-b39f-b4f3aea532f2" />
 
 ### 管理后台 - 专业数据面板
-![管理后台](https://via.placeholder.com/800x400/f1f3f4/343a40?text=%E7%AE%A1%E7%90%86%E5%90%8E%E5%8F%B0%E7%95%8C%E9%9D%A2)
-
-### 用户管理 - 完整权限控制
-![用户管理](https://via.placeholder.com/800x400/fff3cd/856404?text=%E7%94%A8%E6%88%B7%E7%AE%A1%E7%90%86%E7%95%8C%E9%9D%A2)
+<img width="1506" height="847" alt="image" src="https://github.com/user-attachments/assets/2114f451-c0d2-447d-ad54-5e48588aca4d" />
 
 ## 🌐 在线体验
 
